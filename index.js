@@ -1,8 +1,3 @@
-// Suggested code may be subject to a license. Learn more: ~LicenseLog:677015903.
-// Suggested code may be subject to a license. Learn more: ~LicenseLog:1071513562.
-// Suggested code may be subject to a license. Learn more: ~LicenseLog:1532754585.
-// Suggested code may be subject to a license. Learn more: ~LicenseLog:2448952298.
-// Suggested code may be subject to a license. Learn more: ~LicenseLog:2101544715.
 import express from 'express';
 import { MongoClient, ServerApiVersion } from 'mongodb';
 import * as dotenv from 'dotenv';
@@ -37,6 +32,22 @@ async function connectToDatabase() {
 }
 
 connectToDatabase().then((connectedClient) => {
+    app.post('/login', async (req, res) => {
+        const { email, password } = req.body;
+        try {
+            const usersCollection = connectedClient.db('mental_health_app').collection("users");
+            const user = await usersCollection.findOne({ email });
+            if (!user || user.password !== password) {
+                return res.status(401).json({ message: 'Invalid email or password' });
+            }
+            res.status(200).json({ message: 'Logged in successfully' });
+        } catch (error) {
+            console.error("Error logging in:", error);
+            res.status(500).json({ message: 'Error logging in' });
+        }
+    });
+
+
     app.post('/signup', async (req, res) => {
         const { name, email, password } = req.body;
         try {
@@ -46,6 +57,53 @@ connectToDatabase().then((connectedClient) => {
         } catch (error) {
             console.error("Error creating user:", error);
             res.status(500).json({ message: 'Error creating user' });
+        }
+    });
+
+    // Create a new chat message
+    app.post('/chat', async (req, res) => {
+        const { chatSessionId, chatName, message, role } = req.body;
+        try {
+            const chatsCollection = connectedClient.db('mental_health_app').collection("chats");
+            const result = await chatsCollection.insertOne({ chatSessionId, chatName, message, role, createdAt: new Date() });
+            res.status(201).json({ message: 'Message created', messageId: result.insertedId });
+        } catch (error) {
+            console.error("Error creating message:", error);
+            res.status(500).json({ message: 'Error creating message' });
+        }
+    });
+
+    // Get all messages for a chat session
+    app.get('/chat/:chatSessionId', async (req, res) => {
+        const { chatSessionId } = req.params;
+        try {
+            const chatsCollection = connectedClient.db('mental_health_app').collection("chats");
+            const messages = await chatsCollection.find({ chatSessionId }).sort({ createdAt: 1 }).toArray();
+            res.status(200).json(messages);
+        } catch (error) {
+            console.error("Error retrieving messages:", error);
+            res.status(500).json({ message: 'Error retrieving messages' });
+        }
+    });
+
+    // Delete all messages for a chat session
+    app.delete('/chat/:chatSessionId', async (req, res) => {
+        const { chatSessionId } = req.params;
+        try {
+            const chatsCollection = connectedClient.db('mental_health_app').collection("chats");
+
+            // Check if any messages exist for the given chatSessionId
+            const messageCount = await chatsCollection.countDocuments({ chatSessionId });
+            if (messageCount === 0) {
+                return res.status(404).json({ message: 'No messages found for this chat session ID' });
+            }
+
+            // Delete all messages with the given chatSessionId
+            const result = await chatsCollection.deleteMany({ chatSessionId });
+            res.status(200).json({ message: `Deleted ${result.deletedCount} messages` });
+        } catch (error) {
+            console.error("Error deleting messages:", error);
+            res.status(500).json({ message: 'Error deleting messages' });
         }
     });
 });
