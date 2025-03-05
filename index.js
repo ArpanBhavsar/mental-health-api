@@ -1,8 +1,22 @@
+// Suggested code may be subject to a license. Learn more: ~LicenseLog:452087541.
+// Suggested code may be subject to a license. Learn more: ~LicenseLog:2702517424.
+// Suggested code may be subject to a license. Learn more: ~LicenseLog:1264873441.
+// Suggested code may be subject to a license. Learn more: ~LicenseLog:2144928064.
+// Suggested code may be subject to a license. Learn more: ~LicenseLog:1768963559.
+// Suggested code may be subject to a license. Learn more: ~LicenseLog:507080721.
+// Suggested code may be subject to a license. Learn more: ~LicenseLog:1272624249.
+// Suggested code may be subject to a license. Learn more: ~LicenseLog:1503143485.
+// Suggested code may be subject to a license. Learn more: ~LicenseLog:3424593029.
+// Suggested code may be subject to a license. Learn more: ~LicenseLog:3146064476.
+// Suggested code may be subject to a license. Learn more: ~LicenseLog:1028258965.
 // Suggested code may be subject to a license. Learn more: ~LicenseLog:1346208544.
 // Suggested code may be subject to a license. Learn more: ~LicenseLog:3995212880.
 import express from 'express';
+import { generate } from 'randomstring';
 import { MongoClient, ServerApiVersion } from 'mongodb';
 import * as dotenv from 'dotenv';
+import nodemailer from 'nodemailer';
+
 dotenv.config();
 
 
@@ -34,6 +48,93 @@ async function connectToDatabase() {
 }
 
 connectToDatabase().then((connectedClient) => {
+
+  const transporter = nodemailer.createTransport({
+      service: 'gmail',
+    auth: {
+        user: process.env.GMAIL_USER,
+        pass: process.env.GMAIL_PASS,
+      },
+      // host: process.env.EMAIL_HOST,
+      // port: process.env.EMAIL_PORT,
+      // secure: true,
+      // auth: {
+      //   user: process.env.EMAIL_USER,
+      //   pass: process.env.EMAIL_PASS,
+  });
+
+  transporter.verify().then(() => {
+    console.log('SMTP server is ready to take our messages');
+  }).catch(err => {
+    console.error('Error verifying transporter:', err);
+  });
+    
+    app.post('/forgot-password', async (req, res) => {
+      const { email } = req.body;
+      try {
+          const usersCollection = connectedClient.db('mental_health_app').collection("users");
+          const user = await usersCollection.findOne({ email });
+          if (!user) {
+              return res.status(404).json({ message: 'User not found' });
+          }
+          const otp = generate({ length: 6, charset: 'numeric' });
+          const passwordResetSessions = connectedClient.db('mental_health_app').collection("password-reset-sessions");
+          await passwordResetSessions.insertOne({ email, otp, createdAt: new Date() });
+          
+          
+          const mailOptions = {
+            from: `"Mental Health App" <${process.env.GMAIL_USER}>`,
+            to: email,
+            subject: 'Password Reset OTP',
+            html: `<p>Your OTP for password reset is: <strong>${otp}</strong></p>
+                    <p>This OTP is valid for 2 minutes.</p>`,
+          };
+
+          transporter.sendMail(mailOptions, (error, info) => {
+            if (error) {
+              console.error('Error sending email:', error);
+              res.status(500).json({ message: 'Error sending email' });
+              return;
+            }
+            console.log('Email sent:', info.response);
+            
+            
+          });
+          
+          
+          res.status(200).json({ message: 'OTP sent successfully', email: email });
+      } catch (error) {
+          console.error("Error sending OTP:", error);
+          res.status(500).json({ message: 'Error sending OTP' });
+      }
+    });
+
+    app.post('/verify-otp', async (req, res) => {
+      const { email, otp } = req.body;
+      try {
+          const passwordResetSessions = connectedClient.db('mental_health_app').collection("password-reset-sessions");
+          const session = await passwordResetSessions.findOne({ email, otp, createdAt: { $gte: new Date(Date.now() - 2 * 60 * 1000) } }); // Check if OTP is within 2 minutes
+          if (!session) {
+              return res.status(400).json({ message: 'Invalid or expired OTP' });
+          }
+          await passwordResetSessions.deleteOne({ email, otp }); // Delete the session after verification
+          res.status(200).json({ message: 'OTP verified successfully' });
+      } catch (error) {
+          console.error("Error verifying OTP:", error);
+          res.status(500).json({ message: 'Error verifying OTP' });
+      }
+    });
+    app.post('/reset-password', async (req, res) => {
+        const { email, newPassword } = req.body;
+        try {
+            const usersCollection = connectedClient.db('mental_health_app').collection("users");
+            await usersCollection.updateOne({ email }, { $set: { password: newPassword } });
+            res.status(200).json({ message: 'Password reset successfully' });
+        } catch(error) {
+            console.error("Error resetting password:", error);
+            res.status(500).json({ message: 'Error resetting password' });
+        }
+    });
     app.post('/login', async (req, res) => {
         const { email, password } = req.body;
         try {
