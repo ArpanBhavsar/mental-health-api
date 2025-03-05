@@ -82,6 +82,28 @@ connectToDatabase().then((connectedClient) => {
         }
     });
 
+    // Get chats by user ID
+    app.get('/chats/:userId', async (req, res) => {
+      const { userId } = req.params;
+      try {
+          const chatsCollection = connectedClient.db('mental_health_app').collection("chats");
+          const chats = await chatsCollection.aggregate([
+              { $match: { userId: userId } },
+              { $sort: { createdAt: -1 } }, // Sort by the timestamp of the last message in descending order
+              {
+                  $group: {
+                      _id: "$chatSessionId", // Group by chatSessionId to get unique chats
+                      chatName: { $first: "$chatName" },
+                  }
+              },
+              { $project: { _id: 0, chatSessionId: "$_id", chatName: 1 } } // Reshape the result to have chatName and chatSessionId
+          ]).toArray();
+          res.status(200).json(chats);
+      } catch (error) {
+          console.error("Error retrieving chats:", error);
+          res.status(500).json({ message: 'Error retrieving chats' });
+      }
+    });
     // Get all messages for a chat session
     app.get('/chat/:chatSessionId', async (req, res) => {
         const { chatSessionId } = req.params;
