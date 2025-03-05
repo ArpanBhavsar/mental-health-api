@@ -1,3 +1,5 @@
+// Suggested code may be subject to a license. Learn more: ~LicenseLog:1346208544.
+// Suggested code may be subject to a license. Learn more: ~LicenseLog:3995212880.
 import express from 'express';
 import { MongoClient, ServerApiVersion } from 'mongodb';
 import * as dotenv from 'dotenv';
@@ -40,8 +42,9 @@ connectToDatabase().then((connectedClient) => {
             if (!user || user.password !== password) {
                 return res.status(401).json({ message: 'Invalid email or password' });
             }
-            res.status(200).json({ message: 'Logged in successfully' });
-        } catch (error) {
+            
+            res.status(200).json({ message: 'Logged in successfully', userid: user._id });
+        } catch(error) {
             console.error("Error logging in:", error);
             res.status(500).json({ message: 'Error logging in' });
         }
@@ -50,10 +53,16 @@ connectToDatabase().then((connectedClient) => {
 
     app.post('/signup', async (req, res) => {
         const { name, email, password } = req.body;
+        
         try {
             const usersCollection = connectedClient.db('mental_health_app').collection("users");
+            const existingUser = await usersCollection.findOne({ email });
+            if (existingUser) {
+                return res.status(409).json({ message: 'User with this email already exists' });
+            }
+
             const result = await usersCollection.insertOne({ name, email, password });
-            res.status(201).json({ message: 'User created', userId: result.insertedId });
+            res.status(201).json({ message: 'User created',  userId: result.insertedId });
         } catch (error) {
             console.error("Error creating user:", error);
             res.status(500).json({ message: 'Error creating user' });
@@ -62,10 +71,10 @@ connectToDatabase().then((connectedClient) => {
 
     // Create a new chat message
     app.post('/chat', async (req, res) => {
-        const { chatSessionId, chatName, message, role } = req.body;
+        const { chatSessionId, chatName, userId, message, role } = req.body;
         try {
             const chatsCollection = connectedClient.db('mental_health_app').collection("chats");
-            const result = await chatsCollection.insertOne({ chatSessionId, chatName, message, role, createdAt: new Date() });
+            const result = await chatsCollection.insertOne({ chatSessionId, chatName, userId, message, role, createdAt: new Date() });
             res.status(201).json({ message: 'Message created', messageId: result.insertedId });
         } catch (error) {
             console.error("Error creating message:", error);
