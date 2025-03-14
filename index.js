@@ -16,11 +16,13 @@ import { generate } from 'randomstring';
 import { MongoClient, ServerApiVersion } from 'mongodb';
 import * as dotenv from 'dotenv';
 import nodemailer from 'nodemailer';
+import cors from 'cors';
+
 
 dotenv.config();
 
-
 const app = express();
+app.use(cors());
 app.use(express.json());
 // Replace the placeholder with your actual connection string
 const uri = process.env.MONGO_URI;
