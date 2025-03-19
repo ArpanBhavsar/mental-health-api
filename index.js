@@ -215,7 +215,7 @@ connectToDatabase().then((connectedClient) => {
         const { chatSessionId } = req.params;
         try {
             const chatsCollection = connectedClient.db('mental_health_app').collection("chats");
-            const messages = await chatsCollection.find({ chatSessionId }).sort({ createdAt: 1 }).toArray();
+            const messages = await chatsCollection.find({ chatSessionId }).toArray();
             res.status(200).json(messages);
         } catch (error) {
             console.error("Error retrieving messages:", error);
