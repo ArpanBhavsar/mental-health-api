@@ -306,11 +306,6 @@ connectToDatabase().then((connectedClient) => {
     });
 });
 
-
-
-
-
-
 app.get('/', (req, res) => {
     const name = process.env.NAME || 'World';
     res.send(`Hello ${name}!`);
