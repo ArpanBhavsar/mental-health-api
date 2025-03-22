@@ -1,16 +1,3 @@
-// Suggested code may be subject to a license. Learn more: ~LicenseLog:452087541.
-// Suggested code may be subject to a license. Learn more: ~LicenseLog:2702517424.
-// Suggested code may be subject to a license. Learn more: ~LicenseLog:1264873441.
-// Suggested code may be subject to a license. Learn more: ~LicenseLog:2144928064.
-// Suggested code may be subject to a license. Learn more: ~LicenseLog:1768963559.
-// Suggested code may be subject to a license. Learn more: ~LicenseLog:507080721.
-// Suggested code may be subject to a license. Learn more: ~LicenseLog:1272624249.
-// Suggested code may be subject to a license. Learn more: ~LicenseLog:1503143485.
-// Suggested code may be subject to a license. Learn more: ~LicenseLog:3424593029.
-// Suggested code may be subject to a license. Learn more: ~LicenseLog:3146064476.
-// Suggested code may be subject to a license. Learn more: ~LicenseLog:1028258965.
-// Suggested code may be subject to a license. Learn more: ~LicenseLog:1346208544.
-// Suggested code may be subject to a license. Learn more: ~LicenseLog:3995212880.
 import express from 'express';
 import { generate } from 'randomstring';
 import { MongoClient, ServerApiVersion } from 'mongodb';
