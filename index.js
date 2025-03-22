@@ -1,6 +1,6 @@
 import express from 'express';
 import { generate } from 'randomstring';
-import { MongoClient, ServerApiVersion } from 'mongodb';
+import { MongoClient, ServerApiVersion, ObjectId } from 'mongodb';
 import * as dotenv from 'dotenv';
 import nodemailer from 'nodemailer';
 import cors from 'cors';
@@ -301,7 +301,7 @@ connectToDatabase().then((connectedClient) => {
             res.status(200).json({ message: 'Journal entry deleted', entryId: entryId });
         } catch (error) {
             console.error("Error deleting journal entry:", error);
-            res.status(500).json({ message: 'Error deleting journal entry' });
+            res.status(500).json({ message: 'Error deleting journal entry', error: error });
         }
     });
 });
