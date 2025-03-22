@@ -202,7 +202,7 @@ connectToDatabase().then((connectedClient) => {
                 },
                 { $project: { _id: 0, chatSessionId: "$_id", chatName: 1, createdAt: 1 } } // Reshape the result to have chatName and chatSessionId
             ]).toArray();
-             // Sort chats by createdAt in descending order (most recent first)
+            // Sort chats by createdAt in descending order (most recent first)
             const sortedChats = chats.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
             res.status(200).json(sortedChats);
         } catch (error) {
@@ -259,6 +259,67 @@ connectToDatabase().then((connectedClient) => {
         }
     });
 });
+
+app.post('/journal', async (req, res) => {
+    const { userId, datetime, journal_entry } = req.body;
+    try {
+        const journalsCollection = connectedClient.db('mental_health_app').collection("journals");
+        const result = await journalsCollection.insertOne({ userId, datetime, journal_entry });
+        res.status(201).json({ message: 'Journal entry created', entryId: result.insertedId });
+    } catch (error) {
+        console.error("Error creating journal entry:", error);
+        res.status(500).json({ message: 'Error creating journal entry' });
+    }
+});
+
+
+app.put('/journal/:entryId', async (req, res) => {
+    const { entryId } = req.params;
+    const { userId, datetime, journal_entry } = req.body;
+    try {
+        const journalsCollection = connectedClient.db('mental_health_app').collection("journals");
+        const result = await journalsCollection.updateOne({ _id: new ObjectId(entryId) }, { $set: { userId, datetime, journal_entry } });
+        if (result.matchedCount === 0) {
+            return res.status(404).json({ message: 'Journal entry not found' });
+        }
+        res.status(200).json({ message: 'Journal entry updated', entryId: entryId });
+    } catch (error) {
+        console.error("Error updating journal entry:", error);
+        res.status(500).json({ message: 'Error updating journal entry' });
+    }
+});
+
+
+
+app.get('/journals/:userId', async (req, res) => {
+    const { userId } = req.params;
+    try {
+        const journalsCollection = connectedClient.db('mental_health_app').collection("journals");
+        const journals = await journalsCollection.find({ userId }).toArray();
+        res.status(200).json(journals);
+    } catch (error) {
+        console.error("Error retrieving journals:", error);
+        res.status(500).json({ message: 'Error retrieving journals' });
+    }
+});
+
+app.delete('/journal/:entryId', async (req, res) => {
+    const { entryId } = req.params;
+    try {
+        const journalsCollection = connectedClient.db('mental_health_app').collection("journals");
+        const result = await journalsCollection.deleteOne({ _id: new ObjectId(entryId) });
+        if (result.deletedCount === 0) {
+            return res.status(404).json({ message: 'Journal entry not found' });
+        }
+        res.status(200).json({ message: 'Journal entry deleted', entryId: entryId });
+    } catch (error) {
+        console.error("Error deleting journal entry:", error);
+        res.status(500).json({ message: 'Error deleting journal entry' });
+    }
+});
+
+
+
 
 app.get('/', (req, res) => {
     const name = process.env.NAME || 'World';
