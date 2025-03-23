@@ -247,11 +247,11 @@ connectToDatabase().then((connectedClient) => {
     });
 
     app.post('/journal', async (req, res) => {
-        const { userId, title, journal_entry } = req.body;
+        const { userId, title, overall_feeling, journal_entry } = req.body;
         const datetime = new Date();
         try {
             const journalsCollection = connectedClient.db('mental_health_app').collection("journals");
-            const result = await journalsCollection.insertOne({ userId, title, journal_entry, datetime });
+            const result = await journalsCollection.insertOne({ userId, title, overall_feeling, journal_entry, datetime });
             res.status(201).json({ message: 'Journal entry created', entryId: result.insertedId });
         } catch (error) {
             console.error("Error creating journal entry:", error);
@@ -262,10 +262,10 @@ connectToDatabase().then((connectedClient) => {
     
     app.put('/journal/:entryId', async (req, res) => {
         const { entryId } = req.params;
-        const { userId, title, journal_entry } = req.body;
+        const { userId, title, overall_feeling, journal_entry } = req.body;
         try {
             const journalsCollection = connectedClient.db('mental_health_app').collection("journals");
-            const result = await journalsCollection.updateOne({ _id: new ObjectId(entryId) }, { $set: { userId, title, journal_entry } });
+            const result = await journalsCollection.updateOne({ _id: new ObjectId(entryId) }, { $set: { userId, title, overall_feeling, journal_entry } });
             if (result.matchedCount === 0) {
                 return res.status(404).json({ message: 'Journal entry not found' });
             }
