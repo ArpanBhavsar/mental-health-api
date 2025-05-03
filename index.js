@@ -1,4 +1,6 @@
+// Suggested code may be subject to a license. Learn more: ~LicenseLog:2352363703.
 import express from 'express';
+import { GoogleGenAI } from "@google/genai";
 import { generate } from 'randomstring';
 import { MongoClient, ServerApiVersion, ObjectId } from 'mongodb';
 import * as dotenv from 'dotenv';
@@ -8,6 +10,7 @@ import cors from 'cors';
 
 dotenv.config();
 
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -171,6 +174,46 @@ connectToDatabase().then((connectedClient) => {
             res.status(500).json({ message: 'Error creating message' });
         }
     });
+
+    app.post('/gemini-chat', async (req, res) => {
+        const { history, message } = req.body;
+        try {
+            const chat = ai.chats.create({
+                model: "gemini-2.0-flash",
+                history: history || [],
+            });
+
+            const stream = await chat.sendMessageStream({ message: message });
+
+            res.setHeader('Content-Type', 'text/plain');
+            res.setHeader('Cache-Control', 'no-cache');
+            res.setHeader('Connection', 'keep-alive');
+            res.setHeader('Transfer-Encoding', 'chunked');
+            res.flushHeaders();
+
+            for await (const chunk of stream) {
+                if (chunk.text) {
+                    res.write(chunk.text);
+                }
+            }
+
+            res.end();
+
+        } catch (error) {
+            console.error("Error in gemini-chat:", error);
+            if (res.headersSent) {
+                // If headers have been sent, we can't send a status code
+                // and instead just log the error and close the response.
+                console.error("Error occurred after headers were sent:", error);
+                res.end(); // End the response
+            } else {
+                // If no headers have been sent yet, we can send an error status.
+                res.status(500).send('Error in Gemini chat');
+            }
+        }
+    });
+
+
 
     // Get chats by user ID
     app.get('/chats/:userId', async (req, res) => {
