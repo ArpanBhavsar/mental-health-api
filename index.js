@@ -1,6 +1,6 @@
 // Suggested code may be subject to a license. Learn more: ~LicenseLog:2352363703.
 import express from 'express';
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 import { generate } from 'randomstring';
 import { MongoClient, ServerApiVersion, ObjectId } from 'mongodb';
 import * as dotenv from 'dotenv';
@@ -176,10 +176,17 @@ connectToDatabase().then((connectedClient) => {
     });
 
     app.post('/gemini-chat', async (req, res) => {
-        const { history, message } = req.body;
+        // console.log("Request received");
+        const { history, message, systemInstructions } = req.body;
+        // console.log("History: "+JSON.stringify(history));
+        // console.log("Message: "+message);
+
         try {
             const chat = ai.chats.create({
-                model: "gemini-2.0-flash",
+                model: "gemini-2.0-flash-lite",
+                config: {
+                    systemInstruction: systemInstructions || '',
+                },
                 history: history || [],
             });
 
@@ -194,6 +201,7 @@ connectToDatabase().then((connectedClient) => {
             for await (const chunk of stream) {
                 if (chunk.text) {
                     res.write(chunk.text);
+                    // console.log("Chunk: "+chunk.text);
                 }
             }
 
@@ -209,6 +217,80 @@ connectToDatabase().then((connectedClient) => {
             } else {
                 // If no headers have been sent yet, we can send an error status.
                 res.status(500).send('Error in Gemini chat');
+            }
+        }
+    });
+
+    app.post('/gemini-chat-structured', async (req, res) => {
+        // console.log("Request received");
+        const { history, message, systemInstructions } = req.body;
+        // console.log("History: "+JSON.stringify(history));
+        // console.log("Message: "+message);
+
+        try {
+            const chat = ai.chats.create({
+                model: "gemini-2.0-flash-lite",
+                config: {
+                    systemInstruction: systemInstructions || '',
+                    responseMimeType: 'application/json',
+                    responseSchema: {
+                        type: Type.OBJECT,
+                        required: ["journal", "response", "is_journal"],
+                        properties: {
+                            'journal': {
+                                type: Type.OBJECT,
+                                required: ["title", "overall feeling", "journal entry"],
+                                properties: {
+                                    'title': {
+                                        type: Type.STRING,
+                                    },
+                                    'overall feeling': {
+                                        type: Type.STRING,
+                                    },
+                                    'journal entry': {
+                                        type: Type.STRING,
+                                    },
+                                },
+                            },
+                            'response': {
+                                type: Type.STRING,
+                            },
+                            'is_journal': {
+                                type: Type.BOOLEAN,
+                            },
+                        },
+                    },
+                },
+                history: history || [],
+            });
+
+            const stream = await chat.sendMessageStream({ message: message });
+
+            res.setHeader('Content-Type', 'text/plain');
+            res.setHeader('Cache-Control', 'no-cache');
+            res.setHeader('Connection', 'keep-alive');
+            res.setHeader('Transfer-Encoding', 'chunked');
+            res.flushHeaders();
+
+            for await (const chunk of stream) {
+                if (chunk.text) {
+                    res.write(chunk.text);
+                    // console.log("Chunk: "+chunk.text);
+                }
+            }
+
+            res.end();
+
+        } catch (error) {
+            console.error("Error in gemini-chat-structured:", error);
+            if (res.headersSent) {
+                // If headers have been sent, we can't send a status code
+                // and instead just log the error and close the response.
+                console.error("Error occurred after headers were sent:", error);
+                res.end(); // End the response
+            } else {
+                // If no headers have been sent yet, we can send an error status.
+                res.status(500).send('Error in Gemini chat structured');
             }
         }
     });
@@ -298,11 +380,11 @@ connectToDatabase().then((connectedClient) => {
             res.status(201).json({ message: 'Journal entry created', entryId: result.insertedId });
         } catch (error) {
             console.error("Error creating journal entry:", error);
-            res.status(500).json({ message: 'Error creating journal entry. '+error });
+            res.status(500).json({ message: 'Error creating journal entry. ' + error });
         }
     });
-    
-    
+
+
     app.put('/journal/:entryId', async (req, res) => {
         const { entryId } = req.params;
         const { userId, title, overall_feeling, journal_entry } = req.body;
@@ -318,9 +400,9 @@ connectToDatabase().then((connectedClient) => {
             res.status(500).json({ message: 'Error updating journal entry' });
         }
     });
-    
-    
-    
+
+
+
     app.get('/journals/:userId', async (req, res) => {
         const { userId } = req.params;
         try {
@@ -332,7 +414,7 @@ connectToDatabase().then((connectedClient) => {
             res.status(500).json({ message: 'Error retrieving journals' });
         }
     });
-    
+
     app.delete('/journal/:entryId', async (req, res) => {
         const { entryId } = req.params;
         try {
